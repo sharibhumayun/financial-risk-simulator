@@ -6,9 +6,11 @@ from dash.dependencies import Input, Output
 import plotly.express as px
 import pandas as pd
 import numpy as np
+import dash_bootstrap_components as dbc
 
 # Initialize the app
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+server = app.server
 
 # Define the app layout
 app.layout = html.Div(children=[
@@ -92,13 +94,18 @@ def update_simulation(n_clicks, investment_amount, interest_rate, inflation_rate
         for _ in range(num_simulations):
             simulated_value = investment_amount
             annual_values = [simulated_value]
-            for _ in range(int(investment_years)):
+            for year in range(int(investment_years)):
                 # Simulate annual interest rate variation
                 annual_interest = np.random.uniform(
                     (interest_rate / 100) - interest_variation,
                     (interest_rate / 100) + interest_variation
                 )
                 simulated_value *= (1 + annual_interest)
+                
+                # Adjust for inflation
+                inflation_rate_decimal = inflation_rate / 100
+                simulated_value /= (1 + inflation_rate_decimal)
+                
                 annual_values.append(simulated_value)
             simulation_results.append({
                 'final_value': simulated_value,
@@ -138,8 +145,17 @@ def update_simulation(n_clicks, investment_amount, interest_rate, inflation_rate
             labels={'Final Value': 'Final Value ($)'}
         )
 
-        # Enhance histogram with tooltips
+        # Update histogram tooltip
         hist_fig.update_traces(hovertemplate='Final Value: $%{x:,.2f}<br>Frequency: %{y}')
+
+        # Add annotation for average value
+        hist_fig.add_annotation(
+            x=average_result,
+            y=0,
+            text='Average Value',
+            showarrow=True,
+            arrowhead=1
+        )
 
         # Create line chart of annual values
         line_fig = px.line(
@@ -164,4 +180,4 @@ def update_simulation(n_clicks, investment_amount, interest_rate, inflation_rate
     return '', {}, {}
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, host='0.0.0.0', port=8050)
